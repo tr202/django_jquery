@@ -1,4 +1,5 @@
 import logging
+import pprint
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -11,25 +12,103 @@ from django.urls import reverse
 from django.views import View
 from django.views.generic import (CreateView, DeleteView, DetailView,
                                   ListView, UpdateView, TemplateView)
-
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework import permissions
+from rest_framework.generics import CreateAPIView, DestroyAPIView
 from rest_framework import generics
 
 from .forms import CommentForm, PostForm
-from .models import Follow, Gallery, Image, Group, Post
-from .serializers import CommentSerializer, PostSerializer, PostWithCommentsSerializer, GallerySerialiser, ImageSerializer
+from .models import Comment, Follow, Gallery, Image, Group, Post, PostType
+from .serializers import GroupSerialiser, CommentSerializer, PostSerializer, PostWithCommentsSerializer, GallerySerialiser, ImageSerializer, UserSerialiser, CreateTypeGalleryPostSerializer
 
 User = get_user_model()
 
 
+class CreateComment(CreateAPIView):
+    model = Comment
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CommentSerializer
+    queryset = Comment.objects.all()
+
+    def perform_create(self, serializer):
+        print(self.request.data)
+        user = self.request.user
+        return serializer.save(
+            author=user,  
+        )
+
+
+class GetCurrentUsername(APIView):
+    model = User
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserSerialiser
+
+    def get(self, request):
+        user = request.user
+        serialized = UserSerialiser(user)
+        return Response(serialized.data)
+
+
+class GetGroups(APIView):
+    model = Group
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = GroupSerialiser
+
+    def get(self, request):
+        queryset = Group.objects.all()
+        serialized = GroupSerialiser(queryset, many=True)
+        return Response(serialized.data)
+
+
+class DeletePost(DestroyAPIView):
+    model = Post
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        post = Post.objects.get(pk=kwargs['pk'])
+        post_author = post.author
+        user = request.user
+        if user == post_author:
+            post.delete()
+
+
+
+
+class CreateGalleryPost(CreateAPIView):
+    model = Post
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CreateTypeGalleryPostSerializer
+    queryset = Post.objects.all()
+    
+    def perform_create(self, serializer):
+        
+        images = self.request.FILES.getlist('images')
+        if len(images) < 1:
+            return
+        post = serializer.save(
+            author=self.request.user,
+            type=PostType.objects.get(type='gallery')
+        )
+        gallery = Gallery.objects.create(post=post)
+        for image in images:
+            Image.objects.create(gallery=gallery, image=image)
+
+"""
+class CreateUserView(CreateAPIView):
+    model = User
+    permission_classes = [permissions.AllowAny]
+    serializer_class = UserSerialiser
+"""
+
 class IndexApi(TemplateView):
-    permission_classes = [AllowAny]
+    permission_classes = [permissions.AllowAny]
     template_name = 'baseapi.html'
 
+
 class ImageView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         queryset = Image.objects.all()
@@ -38,7 +117,7 @@ class ImageView(APIView):
 
 
 class GalleryView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         queryset = Gallery.objects.all()
@@ -47,7 +126,7 @@ class GalleryView(APIView):
 
 
 class PostDetail(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request, **kwargs):
         post = Post.objects.get(pk=kwargs['pk'])
@@ -56,7 +135,7 @@ class PostDetail(APIView):
 
 
 class GetSingleAuthorPosts(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request, **kwargs):
         author = User.objects.get(username=kwargs['username'])
@@ -66,7 +145,7 @@ class GetSingleAuthorPosts(APIView):
 
 
 class GetGroupPostList(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request, **kwargs):
         group = Group.objects.get(slug=kwargs['slug'])
@@ -76,7 +155,7 @@ class GetGroupPostList(APIView):
 
 
 class GetPostsList(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         queryset = Post.objects.all()

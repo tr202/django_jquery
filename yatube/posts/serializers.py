@@ -1,5 +1,7 @@
 from rest_framework import serializers
-from .models import Comment, Image, Follow, Gallery, Group, Post, PostType,  User
+from drf_writable_nested.serializers import WritableNestedModelSerializer
+from .models import Comment, Image, Follow, Gallery, Group, Post, PostType
+from users.serializers import UserSerialiser
 
 
 class ImageSerializer(serializers.ModelSerializer):
@@ -13,19 +15,13 @@ class GallerySerialiser(serializers.ModelSerializer):
 
     class Meta:
         model = Gallery
-        fields = ['id', 'post', 'gallery_images']
+        fields = ['gallery_images']
 
 
 class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = '__all__'
-
-
-class UserSerialiser(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['id', 'username']
 
 
 class GroupSerialiser(serializers.ModelSerializer):
@@ -40,34 +36,44 @@ class PostTypeSerializer(serializers.ModelSerializer):
         fields = ['id', 'type']
 
 
+class CreateTypeGalleryPostSerializer(serializers.ModelSerializer):
+    #post_gallerys = GallerySerialiser(source='gallerys', many=True)
+
+    class Meta:
+        model = Post
+        fields = ('title', 'text', 'group',)
+
+
 class PostSerializer(serializers.ModelSerializer):
-   
+
     comments_count = serializers.IntegerField(
         source='comments.count',
         read_only=True,
     )
-    #gallerys_count = serializers.RelatedField(
-     #   source='gallerys.count',
-      #  read_only=True,
-    #)
-    gallerys = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+
+    pub_date = serializers.DateTimeField(format="%d %m %Y")
+    # gallerys = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     # post_gallery = GallerySerialiser(source='gallerys',)
     author = UserSerialiser()
     group = GroupSerialiser()
     type = PostTypeSerializer()
     post_gallerys = GallerySerialiser(source='gallerys', many=True)
-   
-    #def get_gallery(self, obj):
-     #   return obj.gallery
 
     class Meta:
         model = Post
-        fields = ['type', 'title', 'text', 'pub_date', 'author', 'group', 'gallerys', 'post_gallerys', 'comments_count']
+        fields = ['id', 'type', 'title', 'text', 'pub_date', 'author', 'group', 'post_gallerys', 'comments_count']
 
 
 class PostWithCommentsSerializer(serializers.ModelSerializer):
+    pub_date = serializers.DateTimeField(format="%d %m %Y")
     comments = CommentSerializer(many=True)
+    author = UserSerialiser()
+    group = GroupSerialiser()
+    type = PostTypeSerializer()
+    post_gallerys = GallerySerialiser(source='gallerys', many=True)
 
     class Meta:
         model = Post
-        fields = ['text', 'pub_date', 'author', 'group', 'comments']
+        fields = ['id', 'type', 'title', 'text', 'pub_date', 'author', 'group', 'post_gallerys', 'comments']
+
+

@@ -3,6 +3,8 @@ from django.contrib import admin
 from django.db import models
 from django.forms import Textarea
 
+from sorl.thumbnail.admin import AdminImageMixin
+
 from .models import Comment, Gallery, Image, Follow, Group, Post, PostType
 
 VERBOSE_NAME_FOR_GET_POST_AUTHOR_NAME = 'Автор поста'
@@ -11,6 +13,10 @@ VERBOSE_NAME_FOR_GET_POST_TEXT = 'Начало статьи'
 
 def get_post_gallerys(post):
     return post.gallerys.all()
+
+
+
+
 
 @admin.register(PostType)
 class PostTypeAdmin(admin.ModelAdmin):
@@ -83,6 +89,7 @@ class CommentAdmin(admin.ModelAdmin):
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
     list_display = ('pk',
+                    'title',
                     'text',
                     'pub_date',
                     'author',
@@ -90,7 +97,7 @@ class PostAdmin(admin.ModelAdmin):
                     'type',
                     'get_post_images'
                     )
-    list_editable = ('group', 'type')
+    list_editable = ('title', 'group', 'type')
     search_fields = ('text',)
     list_filter = ('pub_date',)
     empty_value_display = settings.EMPTY_VALUE_DISPLAY

@@ -12,6 +12,7 @@ from . import views
 app_name = 'users'
 
 urlpatterns = [
+    path('signupapi/', views.CreateUserView.as_view(), name='signupapi'),
     path('signup/', views.SignUp.as_view(), name='signup'),
     path(
         'login/',
